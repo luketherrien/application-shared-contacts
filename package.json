@@ -1,0 +1,23 @@
+{
+  "name": "application-shared-contacts",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Luke Therrien",
+  "scripts": {
+    "build": "npx tsc",
+    "develop": "nodemon",
+    "start": "node build/index",
+    "test": "npx jest"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "latest",
+    "@types/jest": "latest",
+    "@types/node": "latest",
+    "jest": "latest",
+    "nodemon": "latest",
+    "ts-jest": "latest",
+    "ts-node": "latest",
+    "typescript": "latest"
+  }
+}
