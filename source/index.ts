@@ -78,7 +78,7 @@ const parseFile = async (): Promise<void> => {
       userSet.add(user);
       // Space: O(n)
       // Time: O(1)
-      const currentPhoneNumbers = map.get(user) || new Set<String>;
+      const currentPhoneNumbers = map.get(user) || new Set<String>();
       // Time: O(1)
       currentPhoneNumbers.add(phoneNumber);
       // Time: O(1)
