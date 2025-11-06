@@ -16,7 +16,8 @@ import {
 } from './utility/parser';
 
 import {
-  calculateCombinedUserRelationshipMatrix
+  calculateCombinedUserRelationshipCounts,
+  topPairsFromCounts
 } from './utility/relationship';
 
 const FILE_PATH = 'input.csv';
@@ -107,14 +108,20 @@ const parseFile = async (): Promise<void> => {
   // Time: O(n)
   const users = [...userSet];
   console.log('Number of Users', users.length);
-  console.log('Calculating Combined User Relationship Matrix...');
+  console.log('Calculating user relationships (sparse counts)...');
   console.log(new Date());
-  /**
-   * 🚧 This will blow the heap out of the water due to calculating dot products on matrices with size > 50k
-   */
-  const combinedUserRelationshipMatrix: Matrix = calculateCombinedUserRelationshipMatrix(map, partitionedPhoneNumbers, users);
-  console.log('Finished Calculating Combined User Relationship Matrix!');
+  // Previous approach built huge dense matrices and multiplied them.
+  // New approach streams counts of shared phone numbers per user-pair without
+  // materializing the adjacency matrix, dramatically reducing peak memory.
+  const counts = calculateCombinedUserRelationshipCounts(map, partitionedPhoneNumbers, users);
+  console.log('Finished calculating shared-contact counts');
   console.log(new Date());
+  // Print a small summary to keep memory usage low while still being useful
+  const top = topPairsFromCounts(counts, users, 10);
+  console.log('Top 10 user pairs by shared phone numbers');
+  for (const item of top) {
+    console.log(`${item.user} <> ${item.otherUser}: ${item.numberOfSharedPhoneNumbers}`);
+  }
   /**
    * 🚧 Create REPL
    */
