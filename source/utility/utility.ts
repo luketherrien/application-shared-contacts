@@ -2,10 +2,6 @@ import Matrix from '../MatrixInterface';
 import UserRelationship from '../UserRelationshipInterface';
 import UserRelationshipWithCount from '../UserRelationshipWithCountInterface';
 
-import {
-  multiplyByTranspose
-} from './matrix';
-
 /**
  * Creates a symmetrical relationship matrix based on the shared phone numbers of each user.
  * 
@@ -32,18 +28,66 @@ export const createUserRelationshipMatrix = (
   map: Map<String, Set<String>>,
   sortedPhoneNumbers: String[],
   sortedUsers: String[]
-) => {
-  // Time: O(n^3)
-  // Space: O(n^2)
-  const adjacencyMatrix = createAdjacencyMatrix(map, sortedPhoneNumbers, sortedUsers);
-  {
-    const currentMemory = process.memoryUsage().heapUsed / 1024 / 1024;
-    console.log('Created Adjacency Matrix: Current Memory Usage', Math.round(currentMemory * 100) / 100);
+): Matrix => {
+  /**
+   * Memory-optimized implementation that avoids constructing the dense
+   * users×phoneNumbers adjacency matrix and its transpose. Instead, we:
+   * 1) Build an inverted index only for phone numbers present in this partition
+   *    mapping phoneNumber -> array of user indices who have that number.
+   * 2) For each phone number, increment the shared-count for each user pair.
+   *
+   * This reduces peak memory by eliminating the huge adjacency matrix while
+   * still returning a users×users matrix as the final result.
+   */
+  const userCount = sortedUsers.length;
+  // Note: We don't need an ID->index map since we iterate users by index.
+
+  if (sortedPhoneNumbers.length === 0) {
+    throw new Error('Cannot create relationship matrix with zero phone numbers');
   }
-  // Time: O(n^3)
-  // Space: O(n^2)
-  const pairRelationshipMatrix = multiplyByTranspose(adjacencyMatrix);
-  return pairRelationshipMatrix;
+
+  // Initialize users×users output matrix filled with 0s.
+  const values: number[][] = Array.from({ length: userCount }, () => new Array<number>(userCount).fill(0));
+
+  // Create a fast lookup for the current partition's phone numbers.
+  const phoneNumberSet = new Set<String>(sortedPhoneNumbers);
+
+  // Build a sparse inverted index: phoneNumber -> user indices who have it
+  const holdersByPhone = new Map<String, number[]>();
+
+  for (let u = 0; u < userCount; u++) {
+    const user = sortedUsers[u];
+    const numbers = map.get(user) || new Set<String>();
+    // Iterate only the user's numbers; check membership in the current partition
+    for (const num of numbers) {
+      if (!phoneNumberSet.has(num)) continue;
+      const arr = holdersByPhone.get(num);
+      if (arr) {
+        arr.push(u);
+      } else {
+        holdersByPhone.set(num, [u]);
+      }
+    }
+  }
+
+  // For each phone number, increment counts for each unique user pair that shares it
+  for (const userIndices of holdersByPhone.values()) {
+    const k = userIndices.length;
+    for (let i = 0; i < k; i++) {
+      const ui = userIndices[i];
+      // Increment diagonal for users who have this number
+      values[ui][ui] += 1;
+      for (let j = i + 1; j < k; j++) {
+        const uj = userIndices[j];
+        values[ui][uj] += 1;
+        values[uj][ui] += 1;
+      }
+    }
+  }
+
+  // Diagonal equals the per-user phone count in this partition (same as A * Aᵀ).
+  const output: Matrix = { values };
+  return output;
 }
 
 /**
